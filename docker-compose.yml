@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: leadflowai-postgres
+    environment:
+      POSTGRES_DB: leadflowai
+      POSTGRES_USER: leadflowai
+      POSTGRES_PASSWORD: leadflowai_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - leadflowai-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: leadflowai-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - leadflowai-network
+
+  mongodb:
+    image: mongo:7.0
+    container_name: leadflowai-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin_password
+      MONGO_INITDB_DATABASE: leadflowai_analytics
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./database/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - leadflowai-network
+
+  api:
+    build:
+      context: .
+      dockerfile: src/LeadFlowAI.WebAPI/Dockerfile
+    container_name: leadflowai-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=leadflowai;Username=leadflowai;Password=leadflowai_password
+      - ConnectionStrings__Redis=redis:6379
+      - ConnectionStrings__MongoDB=mongodb://leadflowai:leadflowai_mongo_password@mongodb:27017/leadflowai_analytics
+      - JWT__Secret=your-super-secret-jwt-key-change-in-production
+      - JWT__Issuer=LeadFlowAI
+      - JWT__Audience=LeadFlowAI
+      - LLM__Provider=OpenAI
+      - LLM__ApiKey=${OPENAI_API_KEY}
+      - LLM__Model=gpt-4
+      - RDStation__ClientId=${RDSTATION_CLIENT_ID}
+      - RDStation__ClientSecret=${RDSTATION_CLIENT_SECRET}
+      - WhatsApp__Provider=Twilio
+      - WhatsApp__AccountSid=${TWILIO_ACCOUNT_SID}
+      - WhatsApp__AuthToken=${TWILIO_AUTH_TOKEN}
+      - WhatsApp__FromNumber=${TWILIO_WHATSAPP_NUMBER}
+      - Email__Provider=SendGrid
+      - Email__ApiKey=${SENDGRID_API_KEY}
+      - Email__FromEmail=noreply@leadflowai.com
+      - Email__FromName=LeadFlowAI
+    ports:
+      - "5000:8080"
+    depends_on:
+      - postgres
+      - redis
+      - mongodb
+    networks:
+      - leadflowai-network
+
+  worker:
+    build:
+      context: .
+      dockerfile: src/LeadFlowAI.Worker/Dockerfile
+    container_name: leadflowai-worker
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=leadflowai;Username=leadflowai;Password=leadflowai_password
+      - ConnectionStrings__Redis=redis:6379
+      - ConnectionStrings__MongoDB=mongodb://leadflowai:leadflowai_mongo_password@mongodb:27017/leadflowai_analytics
+      - LLM__Provider=OpenAI
+      - LLM__ApiKey=${OPENAI_API_KEY}
+      - LLM__Model=gpt-4
+      - RDStation__ClientId=${RDSTATION_CLIENT_ID}
+      - RDStation__ClientSecret=${RDSTATION_CLIENT_SECRET}
+      - WhatsApp__Provider=Twilio
+      - WhatsApp__AccountSid=${TWILIO_ACCOUNT_SID}
+      - WhatsApp__AuthToken=${TWILIO_AUTH_TOKEN}
+      - WhatsApp__FromNumber=${TWILIO_WHATSAPP_NUMBER}
+      - Email__Provider=SendGrid
+      - Email__ApiKey=${SENDGRID_API_KEY}
+      - Email__FromEmail=noreply@leadflowai.com
+      - Email__FromName=LeadFlowAI
+    depends_on:
+      - postgres
+      - redis
+      - mongodb
+      - api
+    networks:
+      - leadflowai-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: leadflowai-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - leadflowai-network
+
+networks:
+  leadflowai-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  mongodb_data:
