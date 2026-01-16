@@ -132,6 +132,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    // Em produção, pode habilitar Swagger com autenticação se necessário
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "LeadFlowAI API V1");
+    });
+}
 
 app.UseCors("AllowFrontend");
 

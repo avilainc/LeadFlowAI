@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: leadflowai-postgres-prod
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-leadflowai}
+      POSTGRES_USER: ${DATABASE_USER:-leadflowai}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - leadflowai-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: leadflowai-redis-prod
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - leadflowai-network
+    restart: unless-stopped
+
+  api:
+    image: ghcr.io/avilainc/leadflowai-api:latest
+    container_name: leadflowai-api-prod
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=${DATABASE_URL}
+      - ConnectionStrings__Redis=${REDIS_URL}
+      - ConnectionStrings__MongoDB=${MONGODB_URI}
+      - JWT__Secret=${JWT_SECRET}
+      - JWT__Issuer=${JWT_ISSUER:-LeadFlowAI}
+      - JWT__Audience=${JWT_AUDIENCE:-LeadFlowAI}
+      - LLM__Provider=OpenAI
+      - LLM__ApiKey=${OPENAI_API_KEY}
+      - LLM__Model=${OPENAI_MODEL:-gpt-4}
+      - RDStation__ClientId=${RDSTATION_CLIENT_ID}
+      - RDStation__ClientSecret=${RDSTATION_CLIENT_SECRET}
+      - WhatsApp__Provider=Twilio
+      - WhatsApp__AccountSid=${TWILIO_ACCOUNT_SID}
+      - WhatsApp__AuthToken=${TWILIO_AUTH_TOKEN}
+      - WhatsApp__FromNumber=${TWILIO_WHATSAPP_NUMBER}
+      - Email__Provider=SendGrid
+      - Email__ApiKey=${SENDGRID_API_KEY}
+      - Email__FromEmail=${SENDGRID_FROM_EMAIL:-noreply@leadflowai.com}
+      - Email__FromName=${SENDGRID_FROM_NAME:-LeadFlowAI}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+    ports:
+      - "${API_PORT:-5000}:8080"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - leadflowai-network
+    restart: unless-stopped
+
+  worker:
+    image: ghcr.io/avilainc/leadflowai-worker:latest
+    container_name: leadflowai-worker-prod
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=${DATABASE_URL}
+      - ConnectionStrings__Redis=${REDIS_URL}
+      - ConnectionStrings__MongoDB=${MONGODB_URI}
+      - LLM__Provider=OpenAI
+      - LLM__ApiKey=${OPENAI_API_KEY}
+      - LLM__Model=${OPENAI_MODEL:-gpt-4}
+      - RDStation__ClientId=${RDSTATION_CLIENT_ID}
+      - RDStation__ClientSecret=${RDSTATION_CLIENT_SECRET}
+      - WhatsApp__Provider=Twilio
+      - WhatsApp__AccountSid=${TWILIO_ACCOUNT_SID}
+      - WhatsApp__AuthToken=${TWILIO_AUTH_TOKEN}
+      - WhatsApp__FromNumber=${TWILIO_WHATSAPP_NUMBER}
+      - Email__Provider=SendGrid
+      - Email__ApiKey=${SENDGRID_API_KEY}
+      - Email__FromEmail=${SENDGRID_FROM_EMAIL:-noreply@leadflowai.com}
+      - Email__FromName=${SENDGRID_FROM_NAME:-LeadFlowAI}
+    depends_on:
+      - postgres
+      - redis
+      - api
+    networks:
+      - leadflowai-network
+    restart: unless-stopped
+
+networks:
+  leadflowai-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
