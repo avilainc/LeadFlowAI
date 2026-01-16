@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { leadsApi } from '../api'
-import { ArrowLeft, Phone, Mail, Building, MapPin, Calendar, MessageSquare } from 'lucide-react'
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, MessageSquare } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 

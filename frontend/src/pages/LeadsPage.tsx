@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { leadsApi, Lead } from '../api'
-import { Search, Filter, ExternalLink } from 'lucide-react'
+import { leadsApi } from '../api'
+import { Search, ExternalLink } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
