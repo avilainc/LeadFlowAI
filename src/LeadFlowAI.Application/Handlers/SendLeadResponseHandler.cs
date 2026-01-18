@@ -1,6 +1,7 @@
 using MediatR;
 using LeadFlowAI.Application.Commands;
 using LeadFlowAI.Application.Interfaces;
+using LeadFlowAI.Domain.Entities;
 using LeadFlowAI.Domain.Enums;
 using LeadFlowAI.Domain.Interfaces;
 

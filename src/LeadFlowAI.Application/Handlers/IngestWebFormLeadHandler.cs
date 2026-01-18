@@ -6,7 +6,6 @@ using LeadFlowAI.Domain.Enums;
 using LeadFlowAI.Domain.Interfaces;
 using System.Security.Cryptography;
 using System.Text;
-using PhoneNumbers;
 
 namespace LeadFlowAI.Application.Handlers;
 
@@ -17,19 +16,22 @@ public class IngestWebFormLeadHandler : IRequestHandler<IngestWebFormLeadCommand
     private readonly ILeadEventRepository _eventRepository;
     private readonly IIdempotencyService _idempotencyService;
     private readonly IBackgroundJobService _backgroundJobService;
+    private readonly IPhoneNormalizer _phoneNormalizer;
 
     public IngestWebFormLeadHandler(
         ITenantRepository tenantRepository,
         ILeadRepository leadRepository,
         ILeadEventRepository eventRepository,
         IIdempotencyService idempotencyService,
-        IBackgroundJobService backgroundJobService)
+        IBackgroundJobService backgroundJobService,
+        IPhoneNormalizer phoneNormalizer)
     {
         _tenantRepository = tenantRepository;
         _leadRepository = leadRepository;
         _eventRepository = eventRepository;
         _idempotencyService = idempotencyService;
         _backgroundJobService = backgroundJobService;
+        _phoneNormalizer = phoneNormalizer;
     }
 
     public async Task<Guid> Handle(IngestWebFormLeadCommand request, CancellationToken cancellationToken)
@@ -123,17 +125,7 @@ public class IngestWebFormLeadHandler : IRequestHandler<IngestWebFormLeadCommand
 
     private string NormalizePhone(string phone)
     {
-        try
-        {
-            var phoneUtil = PhoneNumberUtil.GetInstance();
-            var parsedNumber = phoneUtil.Parse(phone, "BR");
-            return phoneUtil.Format(parsedNumber, PhoneNumberFormat.E164);
-        }
-        catch
-        {
-            // Fallback: remover caracteres não numéricos
-            return new string(phone.Where(char.IsDigit).ToArray());
-        }
+        return _phoneNormalizer.NormalizeToE164(phone, "BR") ?? new string(phone.Where(char.IsDigit).ToArray());
     }
 
     private string CreateDeduplicationHash(string phoneNormalized, Guid tenantId)

@@ -119,6 +119,7 @@ builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IRDStationService, RDStationService>();
 builder.Services.AddScoped<IBackgroundJobService, BackgroundJobService>();
+builder.Services.AddSingleton<IPhoneNormalizer, PhoneNormalizer>();
 
 // HttpClient
 builder.Services.AddHttpClient<ILLMService, LLMService>();

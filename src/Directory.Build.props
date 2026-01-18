@@ -1,0 +1,24 @@
+<Project>
+  <PropertyGroup>
+    <!-- Versão do C# -->
+    <LangVersion>12.0</LangVersion>
+    
+    <!-- Nullable reference types habilitado -->
+    <Nullable>enable</Nullable>
+    
+    <!-- Tratar warnings como erros (gradual) -->
+    <!-- Para começar, vamos tratar apenas warnings críticos como erros -->
+    <WarningsAsErrors>CS8600;CS8602;CS8603;CS8604;CS8618;CS8625</WarningsAsErrors>
+    
+    <!-- Warnings adicionais -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    
+    <!-- Análise de código -->
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    
+    <!-- Configurações de build -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn> <!-- Desabilita warning de XML documentation -->
+  </PropertyGroup>
+</Project>

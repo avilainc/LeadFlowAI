@@ -1,4 +1,5 @@
 using LeadFlowAI.Application.Interfaces;
+using LeadFlowAI.Domain.Entities;
 using LeadFlowAI.Domain.Interfaces;
 using Microsoft.Extensions.Configuration;
 using System.Net.Http.Json;

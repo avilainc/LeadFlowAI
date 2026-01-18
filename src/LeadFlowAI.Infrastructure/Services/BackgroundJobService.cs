@@ -20,11 +20,3 @@ public class BackgroundJobService : IBackgroundJobService
         BackgroundJob.Enqueue<IBackgroundJobProcessor>(x => x.ProcessSyncToRDStationAsync(leadId, CancellationToken.None));
     }
 }
-
-// Interface para o processador de jobs
-public interface IBackgroundJobProcessor
-{
-    Task ProcessQualifyLeadAsync(Guid leadId, CancellationToken cancellationToken);
-    Task ProcessSendResponseAsync(Guid leadId, CancellationToken cancellationToken);
-    Task ProcessSyncToRDStationAsync(Guid leadId, CancellationToken cancellationToken);
-}

@@ -146,10 +146,10 @@ public class RDStationService : IRDStationService
         }
 
         if (lead.Intent.HasValue)
-            tags.Add($"intent-{lead.Intent.ToString().ToLower()}");
+            tags.Add($"intent-{lead.Intent.Value.ToString().ToLower()}");
 
         if (lead.Urgency.HasValue)
-            tags.Add($"urgency-{lead.Urgency.ToString().ToLower()}");
+            tags.Add($"urgency-{lead.Urgency.Value.ToString().ToLower()}");
 
         tags.Add($"source-{lead.Source.ToString().ToLower()}");
 
