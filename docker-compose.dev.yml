@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (Development)
+  postgres:
+    image: postgres:15-alpine
+    container_name: leadflowai-postgres-dev
+    environment:
+      POSTGRES_DB: leadflowai_dev
+      POSTGRES_USER: leadflowai
+      POSTGRES_PASSWORD: dev_password_123
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./database/init-mongo.js:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - leadflowai-dev-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leadflowai -d leadflowai_dev"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache (Development)
+  redis:
+    image: redis:7-alpine
+    container_name: leadflowai-redis-dev
+    ports:
+      - "6379:6379"
+    networks:
+      - leadflowai-dev-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MongoDB (Development - Optional)
+  mongodb:
+    image: mongo:7-jammy
+    container_name: leadflowai-mongodb-dev
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: dev_password_123
+      MONGO_INITDB_DATABASE: leadflowai_dev
+    volumes:
+      - mongodb_dev_data:/data/db
+      - ./database/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    ports:
+      - "27017:27017"
+    networks:
+      - leadflowai-dev-network
+    restart: unless-stopped
+
+  # PgAdmin (Database Management - Optional)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: leadflowai-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@leadflowai.dev
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    networks:
+      - leadflowai-dev-network
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    profiles:
+      - pgadmin
+
+  # Redis Commander (Redis Management - Optional)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: leadflowai-redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    networks:
+      - leadflowai-dev-network
+    depends_on:
+      - redis
+    restart: unless-stopped
+    profiles:
+      - redis-commander
+
+volumes:
+  postgres_dev_data:
+  mongodb_dev_data:
+
+networks:
+  leadflowai-dev-network:
+    driver: bridge

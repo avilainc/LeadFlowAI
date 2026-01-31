@@ -1,0 +1,182 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: leadflowai-postgres
+    environment:
+      POSTGRES_DB: leadflowai
+      POSTGRES_USER: leadflowai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init-mongo.js:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - leadflowai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leadflowai -d leadflowai"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: leadflowai-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - leadflowai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MongoDB (opcional - para analytics/logs)
+  mongodb:
+    image: mongo:7-jammy
+    container_name: leadflowai-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: leadflowai
+    volumes:
+      - mongodb_data:/data/db
+      - ./database/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    ports:
+      - "27017:27017"
+    networks:
+      - leadflowai-network
+    restart: unless-stopped
+
+  # LeadFlowAI WebAPI
+  webapi:
+    image: ${DOCKER_REGISTRY:-ghcr.io/avila-inc/leadflowai}/webapi:latest
+    container_name: leadflowai-webapi
+    environment:
+      # Database
+      ConnectionStrings__DefaultConnection: ${DATABASE_URL}
+      ConnectionStrings__Redis: ${REDIS_URL}
+
+      # Security
+      JWT__Secret: ${JWT_SECRET}
+      JWT__Issuer: ${JWT_ISSUER:-LeadFlowAI}
+      JWT__Audience: ${JWT_AUDIENCE:-LeadFlowAI}
+
+      # External APIs
+      OpenAI__ApiKey: ${OPENAI_API_KEY}
+      RDStation__ClientId: ${RDSTATION_CLIENT_ID}
+      RDStation__ClientSecret: ${RDSTATION_CLIENT_SECRET}
+      Twilio__AccountSid: ${TWILIO_ACCOUNT_SID}
+      Twilio__AuthToken: ${TWILIO_AUTH_TOKEN}
+      Twilio__WhatsAppNumber: ${TWILIO_WHATSAPP_NUMBER}
+      SendGrid__ApiKey: ${SENDGRID_API_KEY}
+
+      # URLs
+      FrontendUrl: ${FRONTEND_URL}
+      CorsOrigins: ${CORS_ORIGINS}
+
+      # Config
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "8080:8080"
+    networks:
+      - leadflowai-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # LeadFlowAI Worker (Background Jobs)
+  worker:
+    image: ${DOCKER_REGISTRY:-ghcr.io/avila-inc/leadflowai}/worker:latest
+    container_name: leadflowai-worker
+    environment:
+      # Database
+      ConnectionStrings__DefaultConnection: ${DATABASE_URL}
+      ConnectionStrings__Redis: ${REDIS_URL}
+
+      # Security
+      JWT__Secret: ${JWT_SECRET}
+
+      # External APIs
+      OpenAI__ApiKey: ${OPENAI_API_KEY}
+      RDStation__ClientId: ${RDSTATION_CLIENT_ID}
+      RDStation__ClientSecret: ${RDSTATION_CLIENT_SECRET}
+      Twilio__AccountSid: ${TWILIO_ACCOUNT_SID}
+      Twilio__AuthToken: ${TWILIO_AUTH_TOKEN}
+      Twilio__WhatsAppNumber: ${TWILIO_WHATSAPP_NUMBER}
+      SendGrid__ApiKey: ${SENDGRID_API_KEY}
+
+      # Config
+      ASPNETCORE_ENVIRONMENT: Production
+    networks:
+      - leadflowai-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      webapi:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    image: ${DOCKER_REGISTRY:-ghcr.io/avila-inc/leadflowai}/frontend:latest
+    container_name: leadflowai-frontend
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://webapi:8080}
+    ports:
+      - "3000:80"
+    networks:
+      - leadflowai-network
+    depends_on:
+      webapi:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx Reverse Proxy (Opcional)
+  nginx:
+    image: nginx:alpine
+    container_name: leadflowai-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - leadflowai-network
+    depends_on:
+      - webapi
+    restart: unless-stopped
+    profiles:
+      - nginx
+
+volumes:
+  postgres_data:
+  mongodb_data:
+
+networks:
+  leadflowai-network:
+    driver: bridge
