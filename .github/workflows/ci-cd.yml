@@ -60,7 +60,7 @@ jobs:
       continue-on-error: true  # Temporarily allow frontend build to fail
 
     - name: Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v6
       if: always()
       with:
         name: test-results
@@ -70,7 +70,7 @@ jobs:
           **/*.xml
 
     - name: Upload coverage reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v6
       if: always()
       with:
         name: coverage-reports
